@@ -6,11 +6,16 @@ import time
 import math
 import os
 from os import path
+from pathlib import Path
 
 from defineCell import *
 from stimulationProtocols import *
 #from saveData import *
 #from plot import *
+
+# Use RESULTS_DIR environment variable if set, otherwise default to "Results"
+RESULTS_DIR = Path(os.environ.get("RESULTS_DIR", "Results"))
+RESULTS_DIR.mkdir(exist_ok=True)
 
 #prot: stimulation protocol number or filename
 #gPump: conductance of pump
@@ -173,8 +178,8 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
         balance(axon[i], Vrest)
     
     #create folder
-    if not os.path.exists('Results'):
-        os.mkdir('Results')
+    if not os.path.exists(RESULTS_DIR):
+        os.mkdir(RESULTS_DIR)
     
     #create filename
     if isinstance(prot, str) and "/" in prot:
@@ -205,18 +210,18 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
                 +'_sine'+str(sine)
                 +'_ampSine'+str(ampSine)
                 +'.csv')
-    filename = 'Results/potential'+fileSuffix
+    filename = RESULTS_DIR / ('potential' + fileSuffix)
     
     #creates file, deletes content, if file already exists
     with open(filename,'w', newline='') as f:
         csv.writer(f).writerow(["Time", "Axon 1 0", "Axon 1 0.25", "Axon 1 0.5", "Axon 1 0.75", "Axon 1 1", "Axon 3 0", "Axon 3 0.25", "Axon 3 0.5","Axon 3 0.75","Axon 3 1"])
         
-    fileSpikes = 'Results/spikes'+fileSuffix
+    fileSpikes = RESULTS_DIR / ('spikes' + fileSuffix)
     with open(fileSpikes,'w', newline='') as f:
         csv.writer(f).writerow(["Axon 1 0", "Axon 1 0.25", "Axon 1 0.5", "Axon 1 0.75", "Axon 1 1", "Axon 3 0", "Axon 3 0.25", "Axon 3 0.5","Axon 3 0.75","Axon 3 1"])
     
     #Stimulation times
-    fileStim = 'Results/stim'+fileSuffix
+    fileStim = RESULTS_DIR / ('stim' + fileSuffix)
     with open(fileStim,'w', newline='') as f:
         csv.writer(f).writerow(["StimTime"])
         
