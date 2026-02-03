@@ -393,7 +393,7 @@ def setStimulationProtocol(axon, prot, previousStim):
         #i.amp = 2.5 # nA
         #like MNG
         i.dur = 0.5 # ms
-        i.amp = 0.07 # nA
+        i.amp = 0.07 * 10# nA
         
         #working
         #i.dur = 5 # ms 
