@@ -32,37 +32,37 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
     tic = time.perf_counter()
     
     #define morphology as in Tigerholm
-    axon=[0,0,0,0,0,0]
-    
-    axon[0] = h.Section(name='extra1')
-    axon[0].nseg = round(10*scalingFactor)
-    axon[0].diam = 0.25
-    axon[0].L = 100*scalingFactor
-    
-    axon[1] = h.Section(name='branch')
-    axon[1].diam = 0.25
-    axon[1].L = 20000*scalingFactor
-    axon[1].nseg = round(400*scalingFactor)
-        
-    axon[2] = h.Section(name='branchPoint')
-    h.pt3dadd(h.Vector([0,5000*scalingFactor]), h.Vector([0,0]), h.Vector([0,0]), h.Vector([0.25,1]), sec=axon[2])
-    axon[2].nseg = round(100*scalingFactor)
-        
-    axon[3] = h.Section(name='parent')
-    axon[3].diam = 1
-    axon[3].L = 100000*scalingFactor
-    axon[3].nseg = round(10*200*scalingFactor)
-        
-    axon[4] = h.Section(name='extra2')
-    axon[4].nseg = round(10*scalingFactor)
-    axon[4].diam = 1
-    axon[4].L = 100*scalingFactor
-    
-    axon[5] = h.Section(name='extra3')
-    axon[5].nseg = round(10*scalingFactor)
-    axon[5].diam = 1
-    axon[5].L = 100*scalingFactor
-    
+    axon = [0,0,0,0,0,0]
+    axon_names = ['extra1', 'branch', 'branchingPoint', 'parent', 'extra2', 'extra3']
+    axon_params = dict(
+        extra1=        dict(L=   100*scalingFactor, diam=(0.25, 0.25), nseg=round(    10*scalingFactor)),
+        branch=        dict(L= 20000*scalingFactor, diam=(0.25, 0.25), nseg=round(   400*scalingFactor)),
+        branchingPoint=dict(L=  5000*scalingFactor, diam=(0.25, 1.00), nseg=round(   100*scalingFactor)),
+        parent=        dict(L=100000*scalingFactor, diam=(1.00, 1.00), nseg=round(10*200*scalingFactor)),
+        extra2=        dict(L=   100*scalingFactor, diam=(1.00, 1.00), nseg=round(    10*scalingFactor)),
+        extra3=        dict(L=   100*scalingFactor, diam=(1.00, 1.00), nseg=round(    10*scalingFactor)),
+    )
+    # set x0 such that branchingPoint begins at x=0:
+    x0 = -1 * (axon_params['extra1']['L'] + axon_params['branch']['L'])
+    for idx, axon_name in enumerate(axon_names):
+        axon[idx] = h.Section(name=axon_name)
+        # construct along x
+        x1 = x0 + axon_params[axon_name]['L']
+        diam = axon_params[axon_name]['diam']
+        nseg = axon_params[axon_name]['nseg']
+        h.pt3dadd(
+            h.Vector([x0, x1]),
+            h.Vector([0,0]), 
+            h.Vector([0,0]), 
+            h.Vector([diam[0], diam[1]]), 
+            sec=axon[idx]
+        )
+        axon[idx].nseg = nseg
+        # set new starting point of next seg:
+        x0 = x1
+    # compute shape (needed for LFPy affects x3d(), y3d(), z3d()
+    h.define_shape()
+
     for i in range(6):
         axon[i].Ra = 35.5
         axon[i].cm = 1
