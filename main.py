@@ -35,12 +35,18 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
     axon = [0,0,0,0,0,0]
     axon_names = ['extra1', 'branch', 'branchingPoint', 'parent', 'extra2', 'extra3']
     axon_params = dict(
-        extra1=        dict(L=   100*scalingFactor, diam=(0.25, 0.25), nseg=round(    10*scalingFactor)),
-        branch=        dict(L= 20000*scalingFactor, diam=(0.25, 0.25), nseg=round(   400*scalingFactor)),
-        branchingPoint=dict(L=  5000*scalingFactor, diam=(0.25, 1.00), nseg=round(   100*scalingFactor)),
-        parent=        dict(L=100000*scalingFactor, diam=(1.00, 1.00), nseg=round(10*200*scalingFactor)),
-        extra2=        dict(L=   100*scalingFactor, diam=(1.00, 1.00), nseg=round(    10*scalingFactor)),
-        extra3=        dict(L=   100*scalingFactor, diam=(1.00, 1.00), nseg=round(    10*scalingFactor)),
+      extra1=        
+        dict(L=   100*scalingFactor, diam=(0.25, 0.25), nseg=round(    10*scalingFactor)),
+      branch=        
+        dict(L= 20000*scalingFactor, diam=(0.25, 0.25), nseg=round(   400*scalingFactor)),
+      branchingPoint=
+        dict(L=  5000*scalingFactor, diam=(0.25, 1.00), nseg=round(   100*scalingFactor)),
+      parent=        
+        dict(L=100000*scalingFactor, diam=(1.00, 1.00), nseg=round(10*200*scalingFactor)),
+      extra2=        
+        dict(L=   100*scalingFactor, diam=(1.00, 1.00), nseg=round(    10*scalingFactor)),
+      extra3=        
+        dict(L=   100*scalingFactor, diam=(1.00, 1.00), nseg=round(    10*scalingFactor)),
     )
     # set x0 such that branchingPoint begins at x=0:
     x0 = -1 * (axon_params['extra1']['L'] + axon_params['branch']['L'])
