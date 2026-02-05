@@ -79,9 +79,7 @@ def test_run_simulation_qualitative(tmp_path):
 
     # find CSV files
     csv_files = list(results_dir.glob("*.csv"))
-    #assert len(csv_files) == 3, f"Expected 3 CSV files, found {len(csv_files)}"
-    # check only potentials:
-    csv_files = [csv_file for csv_file in csv_files if csv_file.name.startswith("potential")]
+    assert len(csv_files) == 3, f"Expected 3 CSV files, found {len(csv_files)}"
 
     # baseline folder
     baseline_dir = project_root / "tests" / "baseline_results"
