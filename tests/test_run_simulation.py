@@ -7,6 +7,7 @@ import numpy as np
 # tolerances
 SPIKE_TIME_TOL = 0.001  # 1 ms
 POTENTIAL_TOL = 0.01    # 1% relative difference
+EXTRACELLULAR_TOL = 0.01    # 1% relative difference
 
 # --- Spike functions ---
 def detect_spikes_from_csv(df):
@@ -46,7 +47,30 @@ def compare_potential_trace(df_new, df_ref, tol=POTENTIAL_TOL):
 
     return True
 
-# --- Main test ---
+# --- Extracellular functions ---
+def compare_extracellular_trace(npy_new, npy_ref, tol=EXTRACELLULAR_TOL):
+    """
+    Compare potential traces across all compartments.
+    Time must match within relative tolerance.
+    Voltage must match within relative tolerance.
+    Assumes first column = 'Time', rest = voltage per compartment
+    """
+    # check time vector
+    time_new = npy_new[0]
+    time_ref = npy_ref[0]
+    if not np.allclose(time_new, time_ref, rtol=tol, atol=0):
+        return False
+
+    # check extracellular vector
+    volt_new = npy_new[1]
+    volt_ref = npy_ref[1]
+    if not np.allclose(volt_new, volt_ref, rtol=tol, atol=0):
+        return False
+
+    return True
+
+
+# --- Main tests ---
 def test_run_simulation_qualitative(tmp_path):
     """
     Run the main simulation and verify that:
@@ -104,3 +128,79 @@ def test_run_simulation_qualitative(tmp_path):
             # ignore other CSVs
             pass
 
+
+def test_run_simulation_qualitative_extracellular(tmp_path):
+    """
+    Run the main simulation and verify that:
+    - 3 CSV files are generated
+    - potential traces match baseline within 1% (time + voltage)
+    - spike times match baseline within 1 ms
+    - extracellular is generated and matches baseline within 1%
+    """
+
+    project_root = Path(__file__).resolve().parents[1]
+
+    # isolated Results directory
+    results_dir = tmp_path / "Results"
+    results_dir.mkdir()
+
+    # run simulation
+    completed = subprocess.run(
+        [sys.executable, "run_extracell.py"],
+        cwd=project_root,
+        env={
+            **dict(), 
+            "RESULTS_DIR": str(results_dir),
+            "NEURON_FIXED_DT": "0.025",
+            },
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, (
+        f"Simulation failed.\nSTDOUT:\n{completed.stdout}\nSTDERR:\n{completed.stderr}"
+    )
+
+    # find CSV files
+    csv_files = list(results_dir.glob("*.csv"))
+    assert len(csv_files) == 3, f"Expected 3 CSV files, found {len(csv_files)}"
+
+    # baseline folder
+    baseline_dir = project_root / "tests" / "baseline_results"
+    assert baseline_dir.exists(), "Baseline results folder missing!"
+
+    for csv_file in csv_files:
+        baseline_file = baseline_dir / csv_file.name
+        assert baseline_file.exists(), f"Baseline for {csv_file.name} missing"
+
+        df_new = pd.read_csv(csv_file)
+        df_ref = pd.read_csv(baseline_file)
+
+        if csv_file.name.startswith("spikes"):
+            spikes_new = detect_spikes_from_csv(df_new)
+            spikes_ref = detect_spikes_from_csv(df_ref)
+            assert compare_spikes(spikes_new, spikes_ref), f"Spike times differ in {csv_file.name}"
+
+        elif csv_file.name.startswith("potential"):
+            assert compare_potential_trace(df_new, df_ref), f"Potential trace differs in {csv_file.name}"
+
+        else:
+            # ignore other CSVs
+            pass
+
+    # find npy files
+    npy_files = list(results_dir.glob("*.npy"))
+    assert len(npy_files) == 1, f"Expected 1 npy files, found {len(npy_files)}"
+
+    for npy_file in npy_files:
+        baseline_file = baseline_dir / npy_file.name
+        assert baseline_file.exists(), f"Baseline for {npy_file.name} missing"
+
+        npy_new = np.load(npy_file)
+        npy_ref = np.load(baseline_file)
+
+        if npy_file.name.startswith("extracellular"):
+            assert compare_extracellular_trace(npy_new, npy_ref), f"Extracellular trace differs in {npy_file.name}"
+
+        else:
+            # ignore other CSVs
+            pass

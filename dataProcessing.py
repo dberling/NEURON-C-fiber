@@ -6,7 +6,7 @@ import os
 def getFilename(path="Results", filetype="potential", prot=1, scalingFactor=1, tempBranch=32, tempParent=37, 
                 gPump=-0.0047891, gNav17=0.10664, gNav18=0.24271, gNav19=9.4779e-05, 
                gKs=0.0069733, gKf=0.012756, gH=0.0025377, gKdr=0.018002, gKna=0.00042, vRest=-55,
-               sine=False, ampSine=0.1):
+               sine=False, ampSine=0.1, extracell_rec=None):
     #old
     '''
     fileSuffix=('_Prot'+str(prot)+'_scalingFactor'+str(scalingFactor)
@@ -33,6 +33,11 @@ def getFilename(path="Results", filetype="potential", prot=1, scalingFactor=1, t
                 +'_sine'+str(sine)
                 +'_ampSine'+str(ampSine)
                 +'.csv')
+    if filetype=='extracellular':
+        fileSuffix = (fileSuffix[:-4]
+                +'_electr_xyz_um'+str(extracell_rec['electr_xyz_um'])
+                +'_cond_SPERm'+str(extracell_rec['cond_SPERm'])
+                +'.npy')
     filename = path+'/'+filetype+fileSuffix
     return filename
 

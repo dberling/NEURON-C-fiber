@@ -12,6 +12,7 @@ from defineCell import *
 from stimulationProtocols import *
 #from saveData import *
 #from plot import *
+from extracellularRecording import get_ERM
 
 # Use RESULTS_DIR environment variable if set, otherwise default to "Results"
 RESULTS_DIR = Path(os.environ.get("RESULTS_DIR", "Results"))
@@ -26,7 +27,13 @@ RESULTS_DIR.mkdir(exist_ok=True)
 def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempParent=37, 
         gPump=-0.0047891, gNav17=0.10664, gNav18=0.24271, gNav19=9.4779e-05, 
         gKs=0.0069733, gKf=0.012756, gH=0.0025377, gKdr=0.018002, gKna=0.00042,vRest=-55,
-        sine=False, ampSine=0.1):
+        sine=False, ampSine=0.1, extracell_rec=None):
+    """
+
+    extracell_rec: None or dict()
+        Record extracellularly by setting to dict(electr_xyz_um, cond_SPERm)
+        with electrode position (x,y,z) in um and conductivity in S/m.
+    """
     
     #start timer
     tic = time.perf_counter()
@@ -99,9 +106,9 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
             condFactor=1e-5
         insertChannels(axon[i], condFactor, gPump, gNav17, gNav18, gNav19, gKs, gKf, gH, gKdr, gKna)
     
+    cvode = h.CVode()
     if dt==0:
         #variable time step integration method
-        cvode = h.CVode()
         cvode.active(1)
         print("CVode active")
     else:
@@ -164,6 +171,20 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
     apc10.thresh = -10
     apc10.record(spTimes10)
 
+    if extracell_rec != None:
+        # turn on fast membrane current recordings:
+        cvode.use_fast_imem(1)
+        # time
+        tvec = h.Vector()
+        tvec.record(h._ref_t)
+        # record membrane currents for extracellular recording
+        imem = []
+        for sec in axon:
+            for seg in sec:
+                imem_vec = h.Vector()
+                imem_vec.record(seg._ref_i_membrane_)
+                imem.append(imem_vec)
+
     #simulation
     Vrest=vRest
     h.finitialize(Vrest)
@@ -182,6 +203,7 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
     
     for i in range(6):
         balance(axon[i], Vrest)
+
     
     #create folder
     if not os.path.exists(RESULTS_DIR):
@@ -192,7 +214,8 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
         prot = prot.split("/", 2)
         print(prot)
         prot = prot[2]
-    
+
+
     
     #filename can't be too long, full path can't be more than 255 characters
     #therefore values are rounded!
@@ -264,6 +287,28 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
     
     #print(v3)
     #for x in spTimes: print(x)
+
+    if extracell_rec != None:
+        # set up extracellular recording matrix (acting on membrane currents of segs):
+        ERM = get_ERM(
+                fiber_secs_ordered=axon, 
+                electr_xyz_um=extracell_rec['electr_xyz_um'], 
+                cond_SPERm=extracell_rec['cond_SPERm'], 
+                save_geometry=False # for debugging assumed fiber geometry
+        )
+        # convert imem to numpy
+        imem_np = np.array(
+                [list(imem_vec) for imem_vec in imem]
+        )
+        # calculate extracellularly recorded potential:
+        V_ex = ERM @ imem_np
+        # write to npy
+        fileSuffix_ = (fileSuffix[:-4]
+                +'_electr_xyz_um'+str(extracell_rec['electr_xyz_um'])
+                +'_cond_SPERm'+str(extracell_rec['cond_SPERm'])
+                +'.npy')
+        fileExtracellular = RESULTS_DIR / ('extracellular' + fileSuffix_)
+        np.save(fileExtracellular, np.array([np.array(tvec), V_ex.flatten()]))
     
     toc = time.perf_counter()
     print(f"Simulation time: {(toc - tic)/60:0.4f} min")
