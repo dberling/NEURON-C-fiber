@@ -23,7 +23,7 @@ def setStimulationProtocol(axon, prot, previousStim):
         delay = 5000
     elif prot == 1:#single pulse after 2 ms
         vec = [2]
-        delay = 250
+        delay = 500
     elif prot == 2:#Protocol from Barbara
         vec, delay = getStimProt()
     elif prot == 3:#High frequency protocol from Tigerholm
