@@ -11,6 +11,7 @@ from pathlib import Path
 
 from defineCell import *
 from stimulationProtocols import *
+from dataProcessing import getFilename
 #from saveData import *
 #from plot import *
 from extracellularRecording import get_ERM
@@ -28,12 +29,18 @@ RESULTS_DIR.mkdir(exist_ok=True)
 def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempParent=37, 
         gPump=-0.0047891, gNav17=0.10664, gNav18=0.24271, gNav19=9.4779e-05, 
         gKs=0.0069733, gKf=0.012756, gH=0.0025377, gKdr=0.018002, gKna=0.00042,vRest=-55,
-        sine=False, ampSine=0.1, extracell_rec=None, Nav17_PEPD=False):
+        sine=False, ampSine=0.1, extracell_rec=None, Nav17_PEPD=False, Ks_reg=1.0):
     """
 
     extracell_rec: None or dict()
         Record extracellularly by setting to dict(electr_xyz_um, cond_SPERm)
         with electrode position (x,y,z) in um and conductivity in S/m.
+    Nav17_PEPD: bool
+        Whether to simualte Nav17 PEPD mutation by shifting inactivation gate by 20mV
+    Ks_reg: float
+        Defaults to 1.0, which is no regulation. Use to simulate up (>1,0) or
+        downregulation (<1.0) of Ks, by applying this factor to its conductance
+        after the leak conductance is balanced to achieve vRest.
     """
     
     #start timer
@@ -212,6 +219,12 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
     for i in range(6):
         balance(axon[i], Vrest)
 
+    # apply Ks regulation
+    for sec in axon:
+        for seg in sec:
+            seg.ks.gbar = seg.ks.gbar * Ks_reg
+
+
     
     #create folder
     if not os.path.exists(RESULTS_DIR):
@@ -223,36 +236,18 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
         print(prot)
         prot = prot[2]
 
-
     
-    #filename can't be too long, full path can't be more than 255 characters
-    #therefore values are rounded!
-    '''
-    fileSuffix=('_Prot'+str(prot)+'_scalingFactor'+str(scalingFactor)
-                +'_tempBranch'+str(tempBranch)+'_tempParent'+str(tempParent)
-                +'_gPump'+str(gPump)+'_gNav17'+str(gNav17)+'_gNav18'+str(gNav18)+'_gNav19'+str(gNav19)
-                +'_gKs'+str(gKs)+'_gKf'+str(gKf)+'_gH'+str(gH)+'_gKdr'+str(gKdr)+'_gKna'+str(gKna)+'_vRest'+str(vRest)+'.csv')
-    '''
-    fileSuffix=('_Prot'+str(prot)
-                +'_gPump'+str(round(gPump,7))
-                +'_gNav17'+str(round(gNav17,7))
-                +'_gNav18'+str(round(gNav18,7))
-                +'_gNav19'+str(round(gNav19,7))
-                +'_gKs'+str(round(gKs,7))
-                +'_gKf'+str(round(gKf,7))
-                +'_gH'+str(round(gH,7))
-                +'_gKdr'+str(round(gKdr,7))
-                +'_gKna'+str(round(gKna,7))
-                +'_vRest'+str(vRest)
-                +'_sine'+str(sine)
-                +'_ampSine'+str(ampSine)
-                +'_Nav17_PEPD'+str(Nav17_PEPD)
-                +'.csv')
-    filename = RESULTS_DIR / ('potential' + fileSuffix)
-    fileSpikes = RESULTS_DIR / ('spikes' + fileSuffix)
+    filename_params = dict(
+        prot=prot, scalingFactor=scalingFactor, tempBranch=tempBranch, tempParent=tempParent, 
+        gPump=gPump, gNav17=gNav17, gNav18=gNav18, gNav19=gNav19, gKs=gKs, gKf=gKf, gH=gH, 
+        gKdr=gKdr, gKna=gKna, vRest=vRest, sine=sine, ampSine=ampSine, 
+        extracell_rec=extracell_rec, Nav17_PEPD=Nav17_PEPD, Ks_reg=Ks_reg)
+
+    filename = getFilename(path=RESULTS_DIR, filetype="potential", **filename_params)
+    fileSpikes = getFilename(path=RESULTS_DIR, filetype="spikes", **filename_params)
+    fileStim = getFilename(path=RESULTS_DIR, filetype="stim", **filename_params)
     
     #Stimulation times
-    fileStim = RESULTS_DIR / ('stim' + fileSuffix)
     with open(fileStim,'w', newline='') as f:
         csv.writer(f).writerow(["StimTime"])
         
@@ -332,7 +327,7 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
                 +'_electr_xyz_um'+str(extracell_rec['electr_xyz_um'])
                 +'_cond_SPERm'+str(extracell_rec['cond_SPERm'])
                 +'.npy')
-        fileExtracellular = RESULTS_DIR / ('extracellular' + fileSuffix_)
+        fileExtracellular = getFilename(path=RESULTS_DIR, filetype="extracellular", **filename_params)
         np.save(fileExtracellular, np.array([np.array(tvec), V_ex.flatten()]))
     
     toc = time.perf_counter()
