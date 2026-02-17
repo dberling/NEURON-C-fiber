@@ -1,6 +1,7 @@
 from neuron import h
 #from matplotlib import pyplot as plt
 import numpy as np
+import pandas as pd
 import csv
 import time
 import math
@@ -27,7 +28,7 @@ RESULTS_DIR.mkdir(exist_ok=True)
 def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempParent=37, 
         gPump=-0.0047891, gNav17=0.10664, gNav18=0.24271, gNav19=9.4779e-05, 
         gKs=0.0069733, gKf=0.012756, gH=0.0025377, gKdr=0.018002, gKna=0.00042,vRest=-55,
-        sine=False, ampSine=0.1, extracell_rec=None):
+        sine=False, ampSine=0.1, extracell_rec=None, Nav17_PEPD=False):
     """
 
     extracell_rec: None or dict()
@@ -105,6 +106,13 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
         if i==0 or i==5:
             condFactor=1e-5
         insertChannels(axon[i], condFactor, gPump, gNav17, gNav18, gNav19, gKs, gKf, gH, gKdr, gKna)
+
+    if Nav17_PEPD:
+        # shift voltage in alpha_h and beta_h for the inactivation gate h of Nav17 to simulate Nav17 PEPD mutation
+        for sec in axon:
+            for seg in sec:
+                seg.nattxs.pepd_vshift = -20.0 # mV
+
     
     cvode = h.CVode()
     if dt==0:
@@ -238,16 +246,10 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
                 +'_vRest'+str(vRest)
                 +'_sine'+str(sine)
                 +'_ampSine'+str(ampSine)
+                +'_Nav17_PEPD'+str(Nav17_PEPD)
                 +'.csv')
     filename = RESULTS_DIR / ('potential' + fileSuffix)
-    
-    #creates file, deletes content, if file already exists
-    with open(filename,'w', newline='') as f:
-        csv.writer(f).writerow(["Time", "Axon 1 0", "Axon 1 0.25", "Axon 1 0.5", "Axon 1 0.75", "Axon 1 1", "Axon 3 0", "Axon 3 0.25", "Axon 3 0.5","Axon 3 0.75","Axon 3 1"])
-        
     fileSpikes = RESULTS_DIR / ('spikes' + fileSuffix)
-    with open(fileSpikes,'w', newline='') as f:
-        csv.writer(f).writerow(["Axon 1 0", "Axon 1 0.25", "Axon 1 0.5", "Axon 1 0.75", "Axon 1 1", "Axon 3 0", "Axon 3 0.25", "Axon 3 0.5","Axon 3 0.75","Axon 3 1"])
     
     #Stimulation times
     fileStim = RESULTS_DIR / ('stim' + fileSuffix)
@@ -258,29 +260,52 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
         with open(fileStim,'a', newline='') as f:
             csv.writer(f).writerow([stimTime])
     
+    potentials = []
+    spike_times = []
     #start simulation
     tstop = delay
     #h.continuerun(tstop)
     i=0
     while(h.t<tstop):
-        #save data
-        with open(filename,'a', newline='') as f:
-            csv.writer(f).writerow([h.t, axon[1](0).v, axon[1](0.25).v, axon[1](0.5).v, axon[1](0.75).v, axon[1](1).v, axon[3](0).v, axon[3](0.25).v, axon[3](0.5).v, axon[3](0.75).v, axon[3](1).v])
+        potentials.append({
+            "Time"       : h.t, 
+            "Axon 1 0"   : axon[1](0).v, 
+            "Axon 1 0.25": axon[1](0.25).v, 
+            "Axon 1 0.5" : axon[1](0.5).v, 
+            "Axon 1 0.75": axon[1](0.75).v, 
+            "Axon 1 1"   : axon[1](1).v, 
+            "Axon 3 0"   : axon[3](0).v, 
+            "Axon 3 0.25": axon[3](0.25).v, 
+            "Axon 3 0.5" : axon[3](0.5).v,
+            "Axon 3 0.75": axon[3](0.75).v,
+            "Axon 3 1"   : axon[3](1).v,
+        })
+
         if i<len(spTimes) and i<len(spTimes2) and i<len(spTimes3) and i<len(spTimes4) and i<len(spTimes5) and i<len(spTimes6) and i<len(spTimes7) and i<len(spTimes8) and i<len(spTimes9) and i<len(spTimes10):
             print("Time: "+str(h.t))
             print("AP number:"+str(i+1))
             print("Axon 1 0.5: " + str(spTimes3[i]))
             print("Axon 3 0.5: " + str(spTimes8[i]))
-            with open(fileSpikes,'a', newline='') as f:
-                
-                csv.writer(f).writerow([spTimes[i], spTimes2[i],spTimes3[i], spTimes4[i], spTimes5[i], spTimes6[i], 
-                                        spTimes7[i], spTimes8[i],spTimes9[i], spTimes10[i]])
-                
+            spike_times.append({
+                "Axon 1 0"   : spTimes[i], 
+                "Axon 1 0.25": spTimes2[i], 
+                "Axon 1 0.5" : spTimes3[i], 
+                "Axon 1 0.75": spTimes4[i], 
+                "Axon 1 1"   : spTimes5[i], 
+                "Axon 3 0"   : spTimes6[i], 
+                "Axon 3 0.25": spTimes7[i], 
+                "Axon 3 0.5" : spTimes8[i],
+                "Axon 3 0.75": spTimes9[i],
+                "Axon 3 1"   : spTimes10[i],
+            })
             i=i+1
             
         #step 
         h.fadvance()
-    
+
+    # save potentials and spike times
+    pd.DataFrame(potentials).to_csv(filename, index=False)
+    pd.DataFrame(spike_times).to_csv(fileSpikes, index=False)
 
     #plot 
     #l = plotLatency(spTimes10, vec)
