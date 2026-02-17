@@ -4,7 +4,7 @@
 NEURON {
        SUFFIX nattxs
        USEION na READ ena WRITE ina
-       RANGE gbar, ena, ina, celsiusT, Tshift
+       RANGE gbar, ena, ina, celsiusT, Tshift, pepd_vshift
 
 }
 
@@ -47,6 +47,8 @@ PARAMETER {
 
   shift=0 (mV) :10
   Tshift=0 (mV)
+
+  pepd_vshift=0 (mV) : set to -20 for PEPD mutation voltage-shift
 
 }
 
@@ -94,7 +96,7 @@ FUNCTION alpham(Vm (mV)) (/ms) {
 }
 
 FUNCTION alphah(Vm (mV)) (/ms) {
-	 alphah=A_ah/(1+exp((Vm+shift+B_ah)/C_ah))
+	 alphah=A_ah/(1+exp((Vm+pepd_vshift+shift+B_ah)/C_ah))
 }
 
 FUNCTION alphas(Vm (mV)) (/ms) {
@@ -106,7 +108,7 @@ FUNCTION betam(Vm (mV)) (/ms) {
 }
 
 FUNCTION betah(Vm (mV)) (/ms) {
-	 betah=-0.00283+A_bh/(1+exp((Vm+shift+B_bh)/C_bh))
+	 betah=-0.00283+A_bh/(1+exp((Vm+pepd_vshift+shift+B_bh)/C_bh))
 }
 
 FUNCTION betas(Vm (mV)) (/ms) {
