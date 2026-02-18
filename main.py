@@ -323,10 +323,6 @@ def run(prot=1, scalingFactor=1,  dt=0, previousStim=False, tempBranch=32, tempP
         # calculate extracellularly recorded potential:
         V_ex = ERM @ imem_np
         # write to npy
-        fileSuffix_ = (fileSuffix[:-4]
-                +'_electr_xyz_um'+str(extracell_rec['electr_xyz_um'])
-                +'_cond_SPERm'+str(extracell_rec['cond_SPERm'])
-                +'.npy')
         fileExtracellular = getFilename(path=RESULTS_DIR, filetype="extracellular", **filename_params)
         np.save(fileExtracellular, np.array([np.array(tvec), V_ex.flatten()]))
     
